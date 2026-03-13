@@ -1,10 +1,10 @@
-[phases.setup]
-nixPkgs = ["python311", "ffmpeg"]
+￼Enter[phases.setup]
+nixPkgs = ["python311", "ffmpeg", "curl"]
 
 [phases.install]
 cmds = [
   "npm install",
-  "pip install yt-dlp --break-system-packages",
+  "python3 -m pip install yt-dlp",
   "npx playwright install chromium",
   "npx playwright install-deps chromium"
 ]
