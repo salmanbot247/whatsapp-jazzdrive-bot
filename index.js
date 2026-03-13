@@ -1,4 +1,5 @@
 require('dotenv').config();
+const { startServer, registerSock } = require('./server');
 
 const {
   default: makeWASocket,
@@ -160,6 +161,7 @@ async function handleMessage(sock, msg) {
 // ── Bot Start ─────────────────────────────
 async function startBot() {
   console.log('🤖 Bot start ho raha hai...');
+  startServer();
   ensureYtDlp();
 
   const { state, saveCreds } = await useMultiFileAuthState('./auth_session');
@@ -177,21 +179,13 @@ async function startBot() {
     syncFullHistory: false
   });
 
-  // Pairing code
+  // Pairing code - website se hoga
   if (!sock.authState.creds.registered) {
-    let phone = process.env.BOT_NUMBER;
-    if (!phone) { console.error('❌ BOT_NUMBER .env mein set karo!'); process.exit(1); }
-    // Number clean: sirf digits, 03xxx -> 923xxx
-    phone = phone.replace(/[^0-9]/g, '');
-    if (phone.startsWith('0')) phone = '92' + phone.slice(1);
-    console.log('📱 Using number: ' + phone);
-    await new Promise(r => setTimeout(r, 3000));
-    const code = await sock.requestPairingCode(phone);
-    console.log('\n' + '='.repeat(40));
-    console.log(`📱 PAIRING CODE: ${code}`);
-    console.log('='.repeat(40));
-    console.log('WhatsApp > Linked Devices > Link with phone number\n');
+    console.log('\n✅ Bot ready! Website se number enter karo pairing ke liye.');
+    console.log('🌐 Railway domain pe jao aur apna number enter karo\n');
   }
+
+  registerSock(sock);
 
   sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
     if (connection === 'close') {
