@@ -5,21 +5,24 @@ const fs = require('fs');
 const DOWNLOAD_DIR = './downloads';
 if (!fs.existsSync(DOWNLOAD_DIR)) fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
 
-function ensureYtDlp() {
-  try {
-    execSync('yt-dlp --version', { stdio: 'pipe' });
-  } catch {
-    try {
-      execSync('pip install yt-dlp --break-system-packages -q', { stdio: 'inherit' });
-    } catch {
-      execSync('curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && chmod +x /usr/local/bin/yt-dlp', { stdio: 'inherit' });
-    }
+function getYtDlpCmd() {
+  const paths = ['yt-dlp', '/usr/local/bin/yt-dlp', '/usr/bin/yt-dlp', '/root/.local/bin/yt-dlp'];
+  for (const p of paths) {
+    try { execSync(`${p} --version`, { stdio: 'pipe' }); return p; } catch {}
   }
+  return 'yt-dlp'; // fallback - crash nahi karega startup pe
+}
+
+// Sirf log karo - koi install nahi, koi crash nahi
+function ensureYtDlp() {
+  const cmd = getYtDlpCmd();
+  console.log(`✅ yt-dlp path: ${cmd}`);
 }
 
 async function getVideoInfo(url) {
+  const cmd = getYtDlpCmd();
   return new Promise((resolve, reject) => {
-    exec(`yt-dlp --dump-json --no-playlist "${url}"`, (err, stdout, stderr) => {
+    exec(`${cmd} --dump-json --no-playlist "${url}"`, { timeout: 30000 }, (err, stdout, stderr) => {
       if (err) return reject(new Error(stderr || err.message));
       try {
         const info = JSON.parse(stdout);
@@ -30,6 +33,7 @@ async function getVideoInfo(url) {
 }
 
 async function downloadMedia(url, quality) {
+  const cmd = getYtDlpCmd();
   return new Promise((resolve, reject) => {
     let args = '';
     switch (quality) {
@@ -41,13 +45,16 @@ async function downloadMedia(url, quality) {
     }
     const ts = Date.now();
     const out = path.join(DOWNLOAD_DIR, `${ts}.%(ext)s`);
-    exec(`yt-dlp ${args} --no-playlist --no-warnings -o "${out}" "${url}"`, (err, stdout, stderr) => {
-      if (err) return reject(new Error('Download failed: ' + (stderr || err.message)));
-      const files = fs.readdirSync(DOWNLOAD_DIR).filter(f => f.startsWith(String(ts)));
-      if (!files.length) return reject(new Error('File not found after download'));
-      const filePath = path.join(DOWNLOAD_DIR, files[0]);
-      resolve({ filePath, fileName: files[0], fileSize: fs.statSync(filePath).size });
-    });
+    exec(`${cmd} ${args} --no-playlist --no-warnings -o "${out}" "${url}"`,
+      { timeout: 300000 },
+      (err, stdout, stderr) => {
+        if (err) return reject(new Error('Download failed: ' + (stderr || err.message)));
+        const files = fs.readdirSync(DOWNLOAD_DIR).filter(f => f.startsWith(String(ts)));
+        if (!files.length) return reject(new Error('File not found after download'));
+        const filePath = path.join(DOWNLOAD_DIR, files[0]);
+        resolve({ filePath, fileName: files[0], fileSize: fs.statSync(filePath).size });
+      }
+    );
   });
 }
 
