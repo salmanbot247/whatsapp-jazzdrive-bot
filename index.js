@@ -179,8 +179,12 @@ async function startBot() {
 
   // Pairing code
   if (!sock.authState.creds.registered) {
-    const phone = process.env.BOT_NUMBER;
+    let phone = process.env.BOT_NUMBER;
     if (!phone) { console.error('❌ BOT_NUMBER .env mein set karo!'); process.exit(1); }
+    // Number clean: sirf digits, 03xxx -> 923xxx
+    phone = phone.replace(/[^0-9]/g, '');
+    if (phone.startsWith('0')) phone = '92' + phone.slice(1);
+    console.log('📱 Using number: ' + phone);
     await new Promise(r => setTimeout(r, 3000));
     const code = await sock.requestPairingCode(phone);
     console.log('\n' + '='.repeat(40));
