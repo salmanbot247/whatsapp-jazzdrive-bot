@@ -1,0 +1,13 @@
+[phases.setup]
+nixPkgs = ["python311", "ffmpeg"]
+
+[phases.install]
+cmds = [
+  "npm install",
+  "pip install yt-dlp --break-system-packages",
+  "npx playwright install chromium",
+  "npx playwright install-deps chromium"
+]
+
+[start]
+cmd = "node index.js"
